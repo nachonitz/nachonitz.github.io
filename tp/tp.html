@@ -1,0 +1,455 @@
+<!doctype html>
+<head>
+    <script src="js/jquery.js"></script>
+    <script src="js/gl-matrix-3.3.0.js"></script>    
+    <script src="js/webgl-utils.js"></script>
+    <script src="js/dat.gui.js"></script>
+    <script src="discretizador.js"></script>
+    <script src="modulo-geometria.js"></script>
+    <script src="objeto3d.js"></script>
+    <script src="builder.js"></script>
+    <script src="helicoptero.js"></script>
+    <script src="tierra.js"></script>
+    <script src="controlHelicoptero.js"></script>
+    <script src="parcelasManager.js"></script>
+    <style>
+        html{
+            height: 100%;
+        }
+        body{
+            padding: 0;
+            margin: 0;
+            height: 100%;;
+        }
+
+        #myCanvas{
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+    </style>
+
+</head>
+
+<body>
+           
+    <canvas id="myCanvas" >
+        Your browser does not support the HTML5 canvas element.
+    </canvas>
+        
+    
+    <script>
+
+        var vertexShaderFile="vertex-shader.glsl";
+        var vertexShaderFileTierra="vertex-shader-tierra.glsl";
+        var modo="smooth";
+        var shaderProgram;
+        var shaderProgramTierra;
+        var time=0;
+
+        var gl;
+        var mat4=glMatrix.mat4;
+        var mat3=glMatrix.mat3;
+        var vec3=glMatrix.vec3;   
+        
+        var tierra;
+            
+        var $canvas=$("#myCanvas");
+        var aspect=$canvas.width()/$canvas.height();
+
+        // var distanciaCamara=0.14;
+        var distanciaCamara=1.9;
+        var alturaCamara=.7;
+        var velocidadAngular=0.15;
+        
+        var lighting="true";
+
+        var vertexShaderSource;
+        var vertexShaderSourceTierra;
+        var fragmentShaderSource;
+        var fragmentShaderSourceTierra;
+
+        var matrizProyeccion = mat4.create();            
+        var matrizVista = mat4.create();            
+
+
+        var controlHelicopterio;
+        var helicoptero;
+        var pista;
+
+        var camara = 1;
+        var parcelasManager;
+
+        var mouseX = 0.0
+        var mouseY = 0.0
+        var rotationX = 0.0;
+        var rotationY = 0.0
+        var mouseXActual = 0.0;
+        var mouseYActual = 0.0;
+        var mouseApretado = false;
+
+        onmousedown = function(){
+            mouseApretado = true;
+        }
+
+        onmouseup = function(){
+            mouseApretado = false;
+        }
+
+        
+        onmousemove = function(e){
+            mouseXActual = e.clientX;
+            mouseYActual = e.clientY;
+            if (mouseApretado){
+                rotationY += (mouseXActual - mouseX) / 4;
+                rotationX += - (mouseY - mouseYActual) / 4;
+
+            }
+            mouseX = mouseXActual;
+            mouseY = mouseYActual;
+        }
+        
+
+        function initGL(canvas) {
+
+            try {
+                gl = canvas.getContext("webgl");
+                gl.canvas.width=$canvas.width();
+                gl.canvas.height=$canvas.height();                
+            } catch (e) {
+                console.error(e);
+            }
+            if (!gl) {
+                alert("Could not initialise WebGL, sorry :-(");
+            }
+        }
+
+        function loadShaders(){
+
+            $.when(loadVS(),loadVSTierra(), loadFS(), loadFSTierra()).done(function(res1,res2){  
+                webGLStart();
+            });
+
+            function loadVS() {
+                return  $.ajax({
+                    url: "shaders/"+vertexShaderFile,
+                    success: function(result){
+                        vertexShaderSource=result;
+                    }
+                });
+            }
+
+            function loadVSTierra() {
+                return  $.ajax({
+                    url: "shaders/vertex-shader-tierra.glsl",
+                    success: function(result){
+                        vertexShaderSourceTierra=result;
+                    }
+                });
+            }  
+
+            function loadFS() {
+                return  $.ajax({
+                    url: "shaders/fragment-shader.glsl",
+                    success: function(result){
+                        fragmentShaderSource=result;
+                    }
+                });
+            }
+
+            function loadFSTierra() {
+                return  $.ajax({
+                    url: "shaders/fragment-shader-tierra.glsl",
+                    success: function(result){
+                        fragmentShaderSourceTierra=result;
+                    }
+                });
+            }
+        }
+        
+        function getShader(gl,code,type) {
+
+            var shader;
+
+            if (type == "fragment") 
+                shader = gl.createShader(gl.FRAGMENT_SHADER);
+            else // "vertex"
+                shader = gl.createShader(gl.VERTEX_SHADER);
+            
+            gl.shaderSource(shader, code);
+            gl.compileShader(shader);
+    
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error(gl.getShaderInfoLog(shader));
+                return null;
+            }    
+            return shader;
+        }
+        
+        function onResize(){
+            gl.canvas.width=$canvas.width();
+            gl.canvas.height=$canvas.height();
+            aspect=$canvas.width()/$canvas.height();
+        }
+
+        function getShaderSource(url) {
+            var req = new XMLHttpRequest();
+            req.open("GET", url, false);
+            req.send(null);
+            return (req.status == 200) ? req.responseText : null;
+        };
+
+        function initShadersTierra(){
+            var vertexShaderTierra= getShader(gl, vertexShaderSourceTierra,"vertex");
+            var fragmentShaderTierra= getShader(gl, fragmentShaderSourceTierra,"fragment");
+
+            shaderProgramTierra = gl.createProgram();
+            gl.attachShader(shaderProgramTierra, vertexShaderTierra);
+            gl.attachShader(shaderProgramTierra, fragmentShaderTierra);
+            gl.linkProgram(shaderProgramTierra);
+    
+            if (!gl.getProgramParameter(shaderProgramTierra, gl.LINK_STATUS)) {
+                alert("Could not initialise shaders");
+            }
+    
+
+    
+            shaderProgramTierra.vertexPositionAttribute = gl.getAttribLocation(shaderProgramTierra, "aPosition");
+            gl.enableVertexAttribArray(shaderProgramTierra.vertexPositionAttribute);
+    
+            shaderProgramTierra.textureCoordAttribute = gl.getAttribLocation(shaderProgramTierra, "aUv");
+            gl.enableVertexAttribArray(shaderProgramTierra.textureCoordAttribute);
+    
+            shaderProgramTierra.vertexNormalAttribute = gl.getAttribLocation(shaderProgramTierra, "aNormal");
+            gl.enableVertexAttribArray(shaderProgramTierra.vertexNormalAttribute);
+    
+            shaderProgramTierra.pMatrixUniform = gl.getUniformLocation(shaderProgramTierra, "uPMatrix");
+            shaderProgramTierra.mMatrixUniform = gl.getUniformLocation(shaderProgramTierra, "uMMatrix");
+            shaderProgramTierra.vMatrixUniform = gl.getUniformLocation(shaderProgramTierra, "uVMatrix");
+            shaderProgramTierra.nMatrixUniform = gl.getUniformLocation(shaderProgramTierra, "uNMatrix");
+            shaderProgramTierra.samplerUniform = gl.getUniformLocation(shaderProgramTierra, "uSampler");
+            shaderProgramTierra.useLightingUniform = gl.getUniformLocation(shaderProgramTierra, "uUseLighting");
+            shaderProgramTierra.ambientColorUniform = gl.getUniformLocation(shaderProgramTierra, "uAmbientColor");
+            shaderProgramTierra.frameUniform = gl.getUniformLocation(shaderProgramTierra, "time");
+            shaderProgramTierra.lightingDirectionUniform = gl.getUniformLocation(shaderProgramTierra, "uLightPosition");
+            shaderProgramTierra.directionalColorUniform = gl.getUniformLocation(shaderProgramTierra, "uDirectionalColor");
+
+        }
+
+        function initShaders() {
+    
+            var vertexShader= getShader(gl, vertexShaderSource,"vertex");
+            var fragmentShader= getShader(gl, fragmentShaderSource,"fragment");
+
+            shaderProgram = gl.createProgram();
+            gl.attachShader(shaderProgram, vertexShader);
+            gl.attachShader(shaderProgram, fragmentShader);
+            gl.linkProgram(shaderProgram);
+    
+            if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+                alert("Could not initialise shaders");
+            }
+
+    
+            shaderProgram.vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aPosition");
+            gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
+
+
+            shaderProgram.color = gl.getUniformLocation(shaderProgram, "RGB");
+    
+            shaderProgram.vertexNormalAttribute = gl.getAttribLocation(shaderProgram, "aNormal");
+            gl.enableVertexAttribArray(shaderProgram.vertexNormalAttribute);
+    
+            shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
+            shaderProgram.mMatrixUniform = gl.getUniformLocation(shaderProgram, "uMMatrix");
+            shaderProgram.vMatrixUniform = gl.getUniformLocation(shaderProgram, "uVMatrix");
+            shaderProgram.nMatrixUniform = gl.getUniformLocation(shaderProgram, "uNMatrix");
+            shaderProgram.samplerUniform = gl.getUniformLocation(shaderProgram, "uSampler");
+            shaderProgram.useLightingUniform = gl.getUniformLocation(shaderProgram, "uUseLighting");
+            shaderProgram.ambientColorUniform = gl.getUniformLocation(shaderProgram, "uAmbientColor");
+            shaderProgram.frameUniform = gl.getUniformLocation(shaderProgram, "time");
+            shaderProgram.lightingDirectionUniform = gl.getUniformLocation(shaderProgram, "uLightPosition");
+            shaderProgram.directionalColorUniform = gl.getUniformLocation(shaderProgram, "uDirectionalColor");
+        }
+        
+        function setMatrixUniformsTierras(){
+            gl.uniformMatrix4fv(shaderProgramTierra.vMatrixUniform, false, matrizVista);
+            gl.uniformMatrix4fv(shaderProgramTierra.pMatrixUniform, false, matrizProyeccion);
+        }
+    
+        function setMatrixUniforms() {
+            
+            gl.uniformMatrix4fv(shaderProgram.vMatrixUniform, false, matrizVista);
+            gl.uniformMatrix4fv(shaderProgram.pMatrixUniform, false, matrizProyeccion);
+
+        }
+              
+        function drawScene() {
+        
+
+            gl.viewport(0, 0, $canvas.width(), $canvas.height());
+            
+
+            gl.clearColor(0.4, 0.6, 0.9, 1);
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    
+
+            mat4.identity(matrizProyeccion);
+            mat4.perspective(matrizProyeccion, 30, aspect, 0.1, 100.0);
+            mat4.scale(matrizProyeccion,matrizProyeccion,[1,-1,1]);
+            
+            gl.uniform1f(shaderProgram.frameUniform, time/10.0 );
+            gl.uniform3f(shaderProgram.ambientColorUniform, 0.6, 0.6, 0.6 );
+            gl.uniform3f(shaderProgram.directionalColorUniform, 1.2, 1.1, 0.7);
+            gl.uniform1i(shaderProgram.useLightingUniform,(lighting=="true"));
+
+            gl.uniform1f(shaderProgramTierra.frameUniform, time/10.0 );
+            gl.uniform3f(shaderProgramTierra.ambientColorUniform, 0.5, 0.25, 0 );
+            gl.uniform3f(shaderProgramTierra.directionalColorUniform, 1.2, 1.1, 0.7);
+            gl.uniform1i(shaderProgramTierra.useLightingUniform,(lighting=="true"));
+            
+            $("body").keyup(function(e){
+                switch(e.key){
+                    case "1":
+                        camara = 1
+                        break;
+                    case "2":
+                        camara = 2;
+                        break;               
+                    case "3":
+                        camara = 3;
+                        break;
+                    case "4":
+                        camara = 4;
+                        break;
+                    case "h":
+                        helicoptero.comenzarRotacionHelice()    
+                        break;
+                    case "+":
+                        distanciaCamara -= 0.001
+                        // console.log(distanciaCamara)
+                        break;
+                    case "-":
+                        distanciaCamara += 0.001
+                        // console.log(distanciaCamara)
+                        break;
+                }
+            });
+
+            // Definimos la ubicación de la camara                        
+            var pos = controlHelicoptero.getPosition()
+            let rotX = controlHelicoptero.getRoll()
+            let rotY = controlHelicoptero.getYaw()
+            let rotZ = controlHelicoptero.getPitch()
+
+            mat4.lookAt(matrizVista,
+            // vec3.fromValues(0,alturaCamara,distanciaCamara),
+            
+            vec3.fromValues(0,alturaCamara,distanciaCamara),
+            vec3.fromValues(0,0,0),
+            vec3.fromValues(0,1,0)
+            );
+            var rotacion = vec3.fromValues(0,1,0)
+            var rotacionAltura = vec3.fromValues(1,0,0)
+
+
+            
+            
+            switch(camara){
+                case 1:
+                    
+                    mat4.rotateX(matrizVista,matrizVista,(rotationX%360)*Math.PI/180)
+                    // console.log(rotationX)
+                    mat4.rotateY(matrizVista,matrizVista,(rotationY%360)*Math.PI/180)
+                    mat4.rotate(matrizVista,matrizVista,Math.PI/2-rotY,rotacion)
+                    break;
+                case 2:
+                    mat4.rotate(matrizVista,matrizVista,Math.PI/2-rotY,rotacion)
+                    break;
+                case 3:
+                mat4.rotate(matrizVista,matrizVista,-Math.PI/15,rotacionAltura)
+                    mat4.rotate(matrizVista,matrizVista,-rotY,rotacion)
+                    break;
+                case 4:
+                    mat4.rotate(matrizVista,matrizVista,Math.PI/3,rotacionAltura)
+                    mat4.rotate(matrizVista,matrizVista,Math.PI/2-rotY,rotacion)
+                    break;
+            }
+            
+            var vector = vec3.fromValues(-pos.x,-pos.y,-pos.z)
+            mat4.translate(matrizVista,matrizVista,vector)
+
+            
+            var lightPosition = [10.0,0.0, 3.0];  
+            var lightPosition2 = [-5.0,0.0, -10.0];  
+            gl.uniform3fv(shaderProgram.lightingDirectionUniform, lightPosition);
+            gl.uniform3fv(shaderProgram.lightingDirectionUniform, lightPosition2);
+            gl.uniform3fv(shaderProgramTierra.lightingDirectionUniform, lightPosition);
+            gl.uniform3fv(shaderProgramTierra.lightingDirectionUniform, lightPosition2);                 
+
+            gl.useProgram(shaderProgram);
+            setMatrixUniforms();
+            helicoptero.dibujar()
+            pista.dibujar(mat4.create())
+
+
+            gl.useProgram(shaderProgramTierra);
+
+            setMatrixUniformsTierras();
+            parcelasManager.dibujar(pos.x,pos.z)
+
+            
+        }
+        
+        function tick() {
+            requestAnimFrame(tick);
+            time+=1/60;
+
+            helicoptero.actualizar();
+                    
+            drawScene();
+        }
+            
+        function initMenu(){
+            var gui = new dat.GUI();
+            gui.add(window, "distanciaCamara",0.01,10).step(0.01);
+            gui.add(window, "alturaCamara",-4,10).step(0.01);;
+            gui.add(window, "modo",["wireframe","smooth","edges"]);
+            gui.add(window, "velocidadAngular",0, 1).step(0.01);
+            
+            
+        }
+
+        function webGLStart() {
+            var canvas = document.getElementById("myCanvas");
+            initGL(canvas);
+            initShaders();
+            initShadersTierra();
+
+            controlHelicoptero= new ControlHelicoptero();
+            helicoptero = new Helicoptero(controlHelicoptero)
+            pista = getPistaAterrizaje()
+
+            parcelasManager = new ParcelasManager()
+            parcelasManager.iniciarParcelas()
+            parcelasManager.initTexture("img/heightmap.png")
+
+            gl.clearColor(0.2, 0.2, 0.2, 1.0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.enable(gl.DEPTH_TEST);
+    
+            $(window).on("resize",onResize);
+            // initMenu();
+            
+            tick();
+        }
+    
+        // cuando el documento HTML esta completo, iniciamos la aplicación
+        $(document).ready(function(){
+            loadShaders();
+        })
+
+    </script>
+    
+</body>
+</html>
