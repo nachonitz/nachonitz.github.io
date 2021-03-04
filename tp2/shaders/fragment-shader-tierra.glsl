@@ -245,7 +245,7 @@ float snoise(vec3 v){
 			   vec3 color=mix(color1,color2,mask2);		   
 
 				
-				vec3 luz_direccional = difusa(color,vec3(10,10,-10))*0.2+ especular(color,vec3(10,10,-10))*0.03;
+				vec3 luz_direccional = difusa(color,vec3(10,10,-10))*0.1+ especular(color,vec3(10,10,-10))*0.03;
 				luz_direccional += difusa(color,vec3(0,-1,0))*0.1+ especular(color,vec3(0,-1,0))*0.02;
 			   
 			   gl_FragColor = vec4(color+luz_direccional,1.0);
