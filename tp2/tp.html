@@ -79,7 +79,8 @@
         var fragmentShaderSourceAgua;
 
         var matrizProyeccion = mat4.create();            
-        var matrizVista = mat4.create();            
+        var matrizVista = mat4.create();         
+        var matrizCamara = mat4.create();     
 
 
         var controlHelicopterio;
@@ -356,6 +357,7 @@
             shaderProgramAgua.pMatrixUniform = gl.getUniformLocation(shaderProgramAgua, "uPMatrix");
             shaderProgramAgua.mMatrixUniform = gl.getUniformLocation(shaderProgramAgua, "uMMatrix");
             shaderProgramAgua.vMatrixUniform = gl.getUniformLocation(shaderProgramAgua, "uVMatrix");
+            shaderProgramAgua.uMatrixCamera = gl.getUniformLocation(shaderProgramAgua, "uMatrixCamera");
             shaderProgramAgua.nMatrixUniform = gl.getUniformLocation(shaderProgramAgua, "uNMatrix");
             shaderProgramAgua.samplerUniform = gl.getUniformLocation(shaderProgramAgua, "uSampler");
             shaderProgramAgua.samplerUniformReflection = gl.getUniformLocation(shaderProgramAgua, "uSamplerReflection");
@@ -413,7 +415,9 @@
 
         function setMatrixUniformsAgua(){
             gl.uniformMatrix4fv(shaderProgramAgua.vMatrixUniform, false, matrizVista);
+            gl.uniformMatrix4fv(shaderProgramAgua.uMatrixCamera, false, matrizCamara);
             gl.uniformMatrix4fv(shaderProgramAgua.pMatrixUniform, false, matrizProyeccion);
+            
         }
         
         function setMatrixUniformsTierras(){
@@ -445,17 +449,15 @@
             gl.uniform1f(shaderProgram.frameUniform, time/10.0 );
             gl.uniform3f(shaderProgram.ambientColorUniform, 0.6, 0.6, 0.6 );
             gl.uniform3f(shaderProgram.directionalColorUniform, 1.2, 1.1, 0.7);
-            gl.uniform1i(shaderProgram.useLightingUniform,(lighting=="true"));
+            // gl.uniform1i(shaderProgram.useLightingUniform,(lighting=="true"));
 
             gl.uniform1f(shaderProgramTierra.frameUniform, time/10.0 );
             gl.uniform3f(shaderProgramTierra.ambientColorUniform, 0.5, 0.25, 0 );
             gl.uniform3f(shaderProgramTierra.directionalColorUniform, 1.2, 1.1, 0.7);
             gl.uniform1i(shaderProgramTierra.useLightingUniform,(lighting=="true"));
-            gl.uniform1f(gl.getUniformLocation(shaderProgramTierra, "scale1"), scale);
-            gl.uniform1f(gl.getUniformLocation(shaderProgramTierra, "low"), low);
-            gl.uniform1f(gl.getUniformLocation(shaderProgramTierra, "high"), high);
+            
 
-            gl.uniform1f(shaderProgramSphere.frameUniform, time/10.0 );
+            // gl.uniform1f(shaderProgramSphere.frameUniform, time/10.0 );
             gl.uniform3f(shaderProgramSphere.ambientColorUniform, 0.5, 0.25, 0 );
             gl.uniform3f(shaderProgramSphere.directionalColorUniform, 1.2, 1.1, 0.7);
             gl.uniform1i(shaderProgramSphere.useLightingUniform,(lighting=="true"));
@@ -560,6 +562,9 @@
             
             var vector = vec3.fromValues(-pos.x,-pos.y,-pos.z)
             mat4.translate(matrizVista,matrizVista,vector)
+            matrizCamara = mat4.create()
+            mat4.invert(matrizCamara,matrizVista);
+
 
             
             var lightPosition = [10.0,0.0, 3.0];  
@@ -587,6 +592,10 @@
             agua.dibujar(pos.x,pos.z)
             
             gl.useProgram(shaderProgramTierra);
+
+            gl.uniform1f(gl.getUniformLocation(shaderProgramTierra, "scale1"), scale);
+            gl.uniform1f(gl.getUniformLocation(shaderProgramTierra, "low"), low);
+            gl.uniform1f(gl.getUniformLocation(shaderProgramTierra, "high"), high);
             
             setMatrixUniformsTierras();
             parcelasManager.dibujar(pos.x,pos.z)
