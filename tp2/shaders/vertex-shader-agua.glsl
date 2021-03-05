@@ -10,6 +10,7 @@
         uniform mat4 uVMatrix;     // matriz de vista
         uniform mat4 uPMatrix;     // matriz de proyección
         uniform mat3 uNMatrix;     // matriz de normales
+        uniform mat4 uMatrixCamera;
                         
         uniform float time;                 // tiempo en segundos
         
@@ -40,7 +41,11 @@
 
             vec4 worldPos = uMMatrix*vec4(aPosition, 1.0);
 
-            vectorPuntoCamara = normalize(-vec3(uVMatrix*worldPos) / (uVMatrix*worldPos).w);                  
+            vec3 cameraPosition = vec3(uMatrixCamera[3]);
+
+            vectorPuntoCamara = -normalize(vec3(worldPos) - cameraPosition.xyz);
+
+            // vectorPuntoCamara = normalize(-vec3(uVMatrix*worldPos) / (uVMatrix*worldPos).w);                  
 
             gl_Position = uPMatrix*uVMatrix*worldPos;
 

@@ -31,12 +31,11 @@ precision mediump float;
             float valorAlfa = atan(reflexion.y, reflexion.x);
             float valorBeta = acos(reflexion.z / r);
 
-            float alfa = (valorAlfa )/ (2.*PI);
-            float beta = (valorBeta)/(PI);
-            vec3 textureReflectionColor = texture2D(uSamplerReflection, vec2(alfa,beta)).xyz*0.3;
+            float alfa = (valorAlfa)/ (2.*PI);
+            float beta = (valorBeta)/(1.*PI);
+            vec3 textureReflectionColor = texture2D(uSamplerReflection, vec2(alfa,-beta/2.)).xyz*0.5;
 
             vec3 color_difuso = difusa(textureColor,vec3(10,10,-10))*0.2;
-
 
             gl_FragColor = vec4(textureColor+textureReflectionColor+color_difuso,1.0);
 
