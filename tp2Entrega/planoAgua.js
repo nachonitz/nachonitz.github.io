@@ -96,7 +96,7 @@ function PlanoAgua(latitude_bands, longitude_bands){
                 // var z = (longNumber/this.longitudeBands)*this.lado_agua - this.lado_agua/2
                 
                 // var y = 2.5+ sinTheta*sinPhi/4;
-                var y = 2.7
+                var y = 2.5
 
 
                 

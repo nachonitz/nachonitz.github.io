@@ -34,7 +34,7 @@
 
         const float epsilon=8.0*1.0/1024.0; 
 
-        const float amplitud=4.0;
+        const float amplitud=8.0;
 
         void main(void) {
                     
@@ -51,7 +51,7 @@
 
 
             // elevamos la coordenada Y
-            position.y+=center.x*amplitud;
+            position.y+=-1.5 + center.x*amplitud;
 
             vec4 worldPos = uMMatrix*vec4(position, 1.0);                        
 

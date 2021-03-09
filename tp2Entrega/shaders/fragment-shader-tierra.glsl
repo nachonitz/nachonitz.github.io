@@ -247,8 +247,8 @@ float snoise(vec3 v){
 			   // combino color1 (pasto y rocas) con color2 a partir de la mascara2
 			   vec3 color=mix(color1,color2,mask2);		   
 				// color = vec3(0.5);
-				float ka = 0.4;
-				float kd = 0.5;
+				float ka = 0.2;
+				float kd = 1.0;
 				float ks = 0.1;
 				vec3 direccion = normalize(vec3(-1,1,1));
 				vec3 direccion2 = normalize(vec3(0,-1,0));

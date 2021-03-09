@@ -35,8 +35,8 @@ class ParcelasManager{
         var i = Math.floor((x)/LADO_PARCELA)+ Math.floor(FILAS_DE_PARCELAS/2)-1;
         var j = Math.floor((z)/LADO_PARCELA)+ Math.floor(FILAS_DE_PARCELAS/2)-1;
 
-        for (var k = -1; k < 10; k++){
-            for (var l = -1; l < 10; l++){
+        for (var k = -1; k < 5; k++){
+            for (var l = -1; l < 5; l++){
                 if (this.estaEnRango(i+k, j+l)){
                     this.parcelas[i+k][j+l].dibujar(this.textures)
                 }
