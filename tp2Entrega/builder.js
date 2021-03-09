@@ -13,7 +13,7 @@ function getCapsula(){
     var recorridoDiscreto = discretizadorDeCurvas(recorrido, 40);
     var matricesDiscretas = discretizadorNormal(recorrido,40);
     return new Objeto3d(new SuperficieBarrido(formaDiscretizada,recorridoDiscreto,matricesDiscretas
-    ,40,40,true),40,40, makeTexture("/img/cabina.png"));
+    ,40,40,true),40,40, makeTexture("img/cabina.png"));
 }
 
 function circuloArriba(radio,largo,color){
