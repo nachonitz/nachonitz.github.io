@@ -80,7 +80,9 @@
 
         var matrizProyeccion = mat4.create();            
         var matrizVista = mat4.create();         
-        var matrizCamara = mat4.create();     
+        var matrizCamara = mat4.create();  
+        
+        var zoom = 0.0;
 
 
         var controlHelicopterio;
@@ -509,9 +511,9 @@
                         break;
                     case "+":
                         if (mouseApretado){
-                            if (distanciaCamara > 0.65){
+                            if (zoom < 1.3){
     
-                                distanciaCamara -= 0.1
+                                zoom += 0.1
                                 mouseApretado = false
 
                             }
@@ -520,8 +522,8 @@
                         break;
                     case "-":
                         if (mouseApretado){
-                            if (distanciaCamara < 10){
-                                distanciaCamara += 0.1
+                            if (zoom > -3.5){
+                                zoom -= 0.1
                                 mouseApretado = false
 
                             }
@@ -548,8 +550,8 @@
             var rotacionAltura = vec3.fromValues(1,0,0)
 
 
-            
-            
+            // console.log(zoom)
+            mat4.translate(matrizVista,matrizVista,vec3.fromValues(0,zoom/3,zoom))
             switch(camara){
                 case 1:
                     
@@ -559,6 +561,7 @@
                     mat4.rotate(matrizVista,matrizVista,Math.PI/2-rotY,rotacion)
                     break;
                 case 2:
+                    
                     mat4.rotate(matrizVista,matrizVista,Math.PI/2-rotY,rotacion)
                     break;
                 case 3:

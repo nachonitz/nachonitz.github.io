@@ -118,7 +118,7 @@ float snoise(vec3 v){
 
         vec3 difusa(vec3 textureColor, vec3 direccion){
             // vec3 apunta = direccion;
-            return textureColor * max(dot(direccion,vNormal),0.);
+            return textureColor * max(dot(vNormal,direccion),0.);
         }
 
 		uniform float uShininess;
@@ -250,7 +250,7 @@ float snoise(vec3 v){
 				float ka = 0.2;
 				float kd = 1.0;
 				float ks = 0.1;
-				vec3 direccion = normalize(vec3(-1,1,1));
+				vec3 direccion = normalize(vec3(-1,0,1));
 				vec3 direccion2 = normalize(vec3(0,-1,0));
 				vec3 luz_direccional = color*ka +  difusa(color,direccion)*kd + especular(color,direccion)*ks;
 				luz_direccional += color*ka + difusa(color,direccion2)*kd + especular(color,direccion2)*ks;
@@ -258,6 +258,8 @@ float snoise(vec3 v){
 
 			//    gl_FragColor = vec4(vNormal+0.15,1.0);
 			   gl_FragColor = vec4(luz_direccional,1.0);
+				//   gl_FragColor = vec4(vNormal,1.0); 
+			
 			//    gl_FragColor = vec4(vNormal,1.0);
 				// gl_FragColor = vec4(vUv,0.,1.);
 			   //gl_FragColor = vec4(mask1,mask1,mask1,1.0);			   
